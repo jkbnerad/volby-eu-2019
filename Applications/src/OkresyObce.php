@@ -26,7 +26,7 @@ class OkresyObce
      */
     public function downloadData(): void
     {
-        $data = $this->database->query('SELECT `nuts4` FROM `ciselnikNUTS4`');
+        $data = $this->database->query('SELECT `nuts4` FROM `CiselnikNUTS4`');
 
         $baseUrl = $this->baseUrlNuts4;
         $file = __DIR__ . '/../data/xlm/okresy/%s.xml';
@@ -48,18 +48,28 @@ class OkresyObce
      */
     public function parse(): void
     {
-        $nuts4ToNuts3 = $this->database->query('SELECT  n4.`nuts4`, n3.`krajId` FROM `ciselnikNUTS4` AS n4 JOIN `kraj` AS n3 ON n3.`nuts3` = n4.`nuts3`')->fetchPairs();
+        $nuts4ToDetails = $this->database->query('SELECT  n4.`nuts4`, n3.`krajId`, n4.`nuts3` FROM `CiselnikNUTS4` AS n4 JOIN `kraj` AS n3 ON n3.`nuts3` = n4.`nuts3`')->fetchAll();
+        $nuts4Pairs = [];
+
+        foreach($nuts4ToDetails as $detail) {
+            $key = (string) $detail->nuts4;
+            $nuts4Pairs[$key] = [
+                'krajId' => $detail->krajId,
+                'nuts3' => $detail->nuts3
+            ];
+        }
+
         foreach (glob($this->dir) as $file) {
             $items = simplexml_load_string(file_get_contents($file));
 
             foreach ($items->OKRES as $item) {
-                $nuts4Id = $this->parseNuts4($item, $nuts4ToNuts3);
-                $this->parseNuts5($items, $nuts4Id);
+                ['okresId' => $okresId, 'nuts4' => $nuts4] = $this->parseNuts4($item, $nuts4Pairs);
+                $this->parseNuts5($items, $okresId, $nuts4);
             }
         }
     }
 
-    private function parseNuts4($item, array $nuts4Tonuts3): int
+    private function parseNuts4($item, array $nuts4Tonuts3): array
     {
         $attributesNuts4 = $item->attributes();
 
@@ -67,7 +77,8 @@ class OkresyObce
 
         $district = [
             'nuts4' => (string) $attributesNuts4['NUTS_OKRES'],
-            'krajId' => $nuts4Tonuts3[(string) $attributesNuts4['NUTS_OKRES']],
+            'krajId' => $nuts4Tonuts3[(string) $attributesNuts4['NUTS_OKRES']]['krajId'],
+            'nuts3' => $nuts4Tonuts3[(string) $attributesNuts4['NUTS_OKRES']]['nuts3'],
             'nazev' => (string) $attributesNuts4['NAZ_OKRES'],
             'okrsky' => (int) $attributes['OKRSKY_CELKEM'],
             'zpracovano' => (int) $attributes['OKRSKY_ZPRAC'],
@@ -78,24 +89,25 @@ class OkresyObce
             'platneHlasy' => (int) $attributes['PLATNE_HLASY']
         ];
 
-        $this->database->insert('okres', $district)->execute();
+        $this->database->insert('Okres', $district)->execute();
         $nuts4Id = $this->database->getInsertId();
 
         foreach ($item->HLASY_STRANA as $vote) {
             $attributes = $vote->attributes();
             $party = [
                 'okresId' => $nuts4Id,
+                'nuts4' => (string) $attributesNuts4['NUTS_OKRES'],
                 'stranaId' => (int) $attributes['ESTRANA'],
                 'hlasy' => (int) $attributes['HLASY'],
                 'hlasyPct' => (float) $attributes['PROC_HLASU']
             ];
-            $this->database->insert('okresVysledky', $party)->execute();
+            $this->database->insert('OkresVysledky', $party)->execute();
         }
 
-        return $nuts4Id;
+        return ['okresId' => $nuts4Id, 'nuts4' => (string) $attributesNuts4['NUTS_OKRES']];
     }
 
-    private function parseNuts5($items, int $nuts4Id): void
+    private function parseNuts5($items, int $okresId, string $nuts4): void
     {
         foreach ($items->OBEC as $itemNuts5) {
             $attributesNuts4 = $itemNuts5->attributes();
@@ -104,7 +116,8 @@ class OkresyObce
 
             $district = [
                 'nuts5' => (string) $attributesNuts4['CIS_OBEC'],
-                'okresId' => $nuts4Id,
+                'nuts4' => $nuts4,
+                'okresId' => $okresId,
                 'nazev' => (string) $attributesNuts4['NAZ_OBEC'],
                 'okrsky' => (int) $attributes['OKRSKY_CELKEM'],
                 'zpracovano' => (int) $attributes['OKRSKY_ZPRAC'],
@@ -115,18 +128,19 @@ class OkresyObce
                 'platneHlasy' => (int) $attributes['PLATNE_HLASY']
             ];
 
-            $this->database->insert('obec', $district)->execute();
+            $this->database->insert('Obec', $district)->execute();
             $nuts5Id = $this->database->getInsertId();
 
             foreach ($itemNuts5->HLASY_STRANA as $vote) {
                 $attributes = $vote->attributes();
                 $party = [
                     'obecId' => $nuts5Id,
+                    'nuts5' => (string) $attributesNuts4['CIS_OBEC'],
                     'stranaId' => (int) $attributes['ESTRANA'],
                     'hlasy' => (int) $attributes['HLASY'],
                     'hlasyPct' => (float) $attributes['PROC_HLASU']
                 ];
-                $this->database->insert('obecVysledky', $party)->execute();
+                $this->database->insert('ObecVysledky', $party)->execute();
             }
 
         }

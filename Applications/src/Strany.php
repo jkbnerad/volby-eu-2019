@@ -40,7 +40,7 @@ class Strany
                 'slozeniStranKodyCSU' => json_encode(explode(',', (string) $item->SLOZENI))
             ];
 
-            $inserted = $this->database->insert('strana', $entity)->execute();
+            $inserted = $this->database->insert('Strana', $entity)->execute();
 
             if ($inserted) {
                 $i++;

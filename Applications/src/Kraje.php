@@ -43,7 +43,7 @@ class Kraje
                 'platneHlasy' => (int) $attributes['PLATNE_HLASY']
             ];
 
-            $this->database->insert('kraj', $district)->execute();
+            $this->database->insert('Kraj', $district)->execute();
             $districtId = $this->database->getInsertId();
 
             foreach ($item->HLASY_STRANA as $vote) {
@@ -54,7 +54,7 @@ class Kraje
                     'hlasy' => (int) $attributes['HLASY'],
                     'hlasyPct' => (float) $attributes['PROC_HLASU']
                 ];
-                $this->database->insert('krajVysledky', $party)->execute();
+                $this->database->insert('KrajVysledky', $party)->execute();
             }
 
             $i++;
