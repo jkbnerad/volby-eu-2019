@@ -8,14 +8,14 @@ V `Data\CSV` jsou také `CSV` soubory, které jdou běžně otevřít a měly by
 
 ## Příklady
 
-Výsledky ve vybrané obci
+**Výsledky ve vybrané obci**
 
 ```sql
 SELECT 
 	o.`nazev` AS `Obec`, 
 	s.`nazev` AS `Strana`, 
-	ov.`hlasy`, 
-	ov.`hlasyPct` 
+	ov.`hlasy` AS `Ziskanych hlasu`, 
+	ov.`hlasyPct` AS PCT
 FROM `Obec` AS o
 JOIN `ObecVysledky` AS ov ON ov.`obecId` = o.`obecId`
 JOIN `CiselnikNUTS5` AS n5 ON n5.`nuts5` = o.`nuts5`
@@ -24,9 +24,16 @@ WHERE n5.`nuts5` = "545678" -- Markvartice, okres Decin
 ORDER BY ov.`hlasy` DESC; 
 ```
 
-V jaké obci má strana největší podporu
+| Obec | Strana | Ziskanych hlasu | PCT |
+|---|---|---|---|
+| Markvartice | ANO 2011 | 34 | 29.82 |
+| Markvartice | STAN | 14 | 12.28 |
 
-```
+a tak dále 
+
+**V jaké obci má strana největší podporu**
+
+```sql
 SELECT 
 	s.`nazev` AS `Strana`, 
 	n5.nazev AS Obec, 
@@ -41,3 +48,10 @@ WHERE ov.`stranaId` = 7 -- STAN + TOP 09
 ORDER BY ov.`hlasyPct` DESC
 LIMIT 20;
 ```
+
+| Strana | Obec | Okres | Ziskane hlasy | PCT |
+|---|---|---|---|---|
+| STAN	| Dolní Studénky	| Šumperk	| 201	| 49.88 %
+| STAN	| Žďárek	| Liberec	| 18	| 40.00 %
+
+a tak dále 
